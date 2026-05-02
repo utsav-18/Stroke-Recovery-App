@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import os
 import tempfile
+from collections import Counter
 from typing import Any
 
+import cv2
 import numpy as np
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
+from emotion_utils import predict_emotion
 from model_loader import load_model
 from pose_utils import extract_features_from_video
 
@@ -95,6 +98,23 @@ def _is_high_quality_motion(feature_vector: np.ndarray) -> bool:
     return shoulder_range > 100.0 and elbow_range > 100.0 and wrist_xy_range_max > 0.5
 
 
+def _extract_frames_from_video(video_path: str) -> list[np.ndarray]:
+    capture = cv2.VideoCapture(video_path)
+    if not capture.isOpened():
+        return []
+
+    frames: list[np.ndarray] = []
+
+    while True:
+        ok, frame = capture.read()
+        if not ok:
+            break
+        frames.append(frame)
+
+    capture.release()
+    return frames
+
+
 @router.post("/analyze")
 async def analyze_video(file: UploadFile = File(...), debug: bool = Query(False)) -> dict:
     if not file.filename:
@@ -123,6 +143,19 @@ async def analyze_video(file: UploadFile = File(...), debug: bool = Query(False)
             frame_skip=5,
         )
         print("Frames processed:", frames_processed)
+
+        frames = _extract_frames_from_video(temp_path)
+        detected_emotions = []
+        for frame in frames[::5]:
+            emotion = predict_emotion(frame)
+            if emotion != "No Face Detected":
+                detected_emotions.append(emotion)
+
+        if detected_emotions:
+            final_emotion = Counter(detected_emotions).most_common(1)[0][0]
+        else:
+            final_emotion = "No Face Detected"
+
         model = load_model()
 
         aligned_features = _align_feature_vector(model, features)
@@ -143,6 +176,7 @@ async def analyze_video(file: UploadFile = File(...), debug: bool = Query(False)
         response = {
             "movement_status": movement_status,
             "confidence_score": round(float(confidence_score), 4),
+            "emotion": final_emotion,
         }
 
         if debug:
