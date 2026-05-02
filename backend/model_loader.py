@@ -10,6 +10,8 @@ import torch.nn as nn
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+emotion_model_path = os.path.join(BASE_DIR, "emotion_model.pkl")
+stroke_model_path = os.path.join(BASE_DIR, "stroke_recovery_model_synth.pkl")
 
 
 class ConvBNReLU(nn.Sequential):
@@ -236,42 +238,51 @@ def _ensure_numpy_pickle_compat() -> None:
 @lru_cache(maxsize=1)
 def load_model(model_filename: str = "stroke_recovery_model_synth.pkl") -> Any:
     """Load and cache the trained model from disk."""
-    model_path = os.path.join(BASE_DIR, model_filename)
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model file not found: {model_path}")
-
-    _ensure_numpy_pickle_compat()
-
     try:
+        model_path = stroke_model_path if model_filename == "stroke_recovery_model_synth.pkl" else os.path.join(BASE_DIR, model_filename)
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model file not found: {model_path}")
+
+        _ensure_numpy_pickle_compat()
         return joblib.load(model_path)
     except ModuleNotFoundError as exc:
         if "numpy._core" in str(exc):
-            raise RuntimeError(
+            print(
                 "Model load failed due to NumPy compatibility. "
                 "Try upgrading NumPy in this environment: pip install --upgrade numpy"
-            ) from exc
-        raise
+            )
+            print(f"Model load error: {exc}")
+            return None
+        print(f"Model load error: {exc}")
+        return None
+    except Exception as exc:
+        print(f"Model load error: {exc}")
+        return None
 
 
 @lru_cache(maxsize=1)
 def load_emotion_model(model_filename: str = "emotion_model.pkl") -> Any:
     """Load and cache the emotion model from disk."""
-    emotion_model_path = os.path.join(BASE_DIR, model_filename)
-    if not os.path.exists(emotion_model_path):
-        raise FileNotFoundError(f"Emotion model file not found: {emotion_model_path}")
-
-    model = EmotionModel()
-
     try:
-        state_dict = torch.load(emotion_model_path, map_location="cpu", weights_only=False)
-    except Exception:
-        _ensure_numpy_pickle_compat()
-        state_dict = joblib.load(emotion_model_path)
+        model_path = emotion_model_path if model_filename == "emotion_model.pkl" else os.path.join(BASE_DIR, model_filename)
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Emotion model file not found: {model_path}")
 
-    model.load_state_dict(state_dict)
-    model.eval()
-    print("Emotion model loaded from:", emotion_model_path)
-    return model
+        model = EmotionModel()
+
+        try:
+            state_dict = torch.load(model_path, map_location="cpu", weights_only=False)
+        except Exception:
+            _ensure_numpy_pickle_compat()
+            state_dict = joblib.load(model_path)
+
+        model.load_state_dict(state_dict)
+        model.eval()
+        print("Emotion model loaded from:", model_path)
+        return model
+    except Exception as exc:
+        print(f"Emotion model load error: {exc}")
+        return None
 
 
 emotion_model = None
