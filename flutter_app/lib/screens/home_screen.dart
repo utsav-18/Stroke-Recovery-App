@@ -300,12 +300,26 @@ class _HomeScreenState extends State<HomeScreen> {
   Color _statusColor(String status) {
     final normalized = status.toLowerCase();
     if (normalized.contains('improved')) {
-      return const Color(0xFF0F766E);
+      return const Color(0xFF22C55E);
     }
     if (normalized.contains('improving')) {
-      return const Color(0xFFB45309);
+      return const Color(0xFFEAB308);
     }
-    return const Color(0xFFB91C1C);
+    return const Color(0xFFEF4444);
+  }
+
+  Color _emotionColor(String emotion) {
+    final normalized = emotion.toLowerCase();
+    if (normalized.contains('happy')) {
+      return const Color(0xFF22C55E);
+    }
+    if (normalized.contains('neutral')) {
+      return const Color(0xFFEAB308);
+    }
+    if (normalized.contains('sad')) {
+      return const Color(0xFF60A5FA);
+    }
+    return const Color(0xFFEF4444);
   }
 
   String _formatConfidence(double value) {
@@ -327,19 +341,35 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildHeaderCard(),
-              const SizedBox(height: 16),
-              _buildCameraCard(cameraController, cameraReady),
-              const SizedBox(height: 16),
-              _buildActionButtons(cameraReady),
-              const SizedBox(height: 16),
-              _buildStatusSection(),
-              const SizedBox(height: 16),
-              _buildResultSection(),
+              _buildHeroCard(),
+              const SizedBox(height: 20),
+              _buildSectionCard(
+                title: 'Camera Preview',
+                icon: Icons.videocam_rounded,
+                child: _buildCameraPreview(cameraController, cameraReady),
+              ),
+              const SizedBox(height: 20),
+              _buildSectionCard(
+                title: 'Controls',
+                icon: Icons.tune_rounded,
+                child: _buildActionButtons(cameraReady),
+              ),
+              const SizedBox(height: 20),
+              _buildSectionCard(
+                title: 'Status',
+                icon: Icons.info_outline_rounded,
+                child: _buildStatusSection(),
+              ),
+              const SizedBox(height: 20),
+              _buildSectionCard(
+                title: 'Results',
+                icon: Icons.analytics_rounded,
+                child: _buildResultSection(),
+              ),
             ],
           ),
         ),
@@ -347,31 +377,36 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeaderCard() {
+  Widget _buildHeroCard() {
     return Card(
-      elevation: 0,
-      color: const Color(0xFFEAF5F4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: const Padding(
-        padding: EdgeInsets.all(20),
-        child: Column(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Stroke Recovery Monitoring',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF12312E),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1D3557),
+                borderRadius: BorderRadius.circular(18),
               ),
+              child: const Icon(Icons.monitor_heart_rounded, size: 30, color: Color(0xFF60A5FA)),
             ),
-            SizedBox(height: 8),
-            Text(
-              'Record a rehabilitation exercise, save the clip locally, and upload it to your FastAPI backend for analysis.',
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.45,
-                color: Color(0xFF44605D),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Stroke Recovery Monitoring',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Record or choose a therapy video, then upload it for movement and emotion analysis.',
+                    style: TextStyle(height: 1.45),
+                  ),
+                ],
               ),
             ),
           ],
@@ -380,73 +415,86 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCameraCard(
-      CameraController? cameraController, bool cameraReady) {
+  Widget _buildSectionCard({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Camera Preview',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF12312E),
-              ),
+            Row(
+              children: [
+                Icon(icon, color: const Color(0xFF60A5FA)),
+                const SizedBox(width: 10),
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                height: 260,
-                color: const Color(0xFF0F172A),
-                alignment: Alignment.center,
-                child: _isCameraLoading
-                    ? const CircularProgressIndicator()
-                    : _cameraError != null
-                        ? Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(
-                              _cameraError!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          )
-                        : cameraReady
-                            ? Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  CameraPreview(cameraController!),
-                                  if (_isRecording)
-                                    const Positioned(
-                                      top: 14,
-                                      left: 14,
-                                      child: _RecordingBadge(),
-                                    ),
-                                ],
-                              )
-                            : const Center(
-                                child: Text(
-                                  'Camera is preparing...',
-                                  style: TextStyle(color: Colors.white70),
-                                ),
-                              ),
-              ),
-            ),
-            if (_availableCameras.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                'Available cameras: ${_availableCameras.length}',
-                style: const TextStyle(color: Color(0xFF5A6F6B)),
-              ),
-            ],
+            const SizedBox(height: 16),
+            child,
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCameraPreview(CameraController? cameraController, bool cameraReady) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            height: 260,
+            color: const Color(0xFF0B1220),
+            alignment: Alignment.center,
+            child: _isCameraLoading
+                ? const CircularProgressIndicator()
+                : _cameraError != null
+                    ? Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          _cameraError!,
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    : cameraReady
+                        ? Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              CameraPreview(cameraController!),
+                              if (_isRecording)
+                                const Positioned(
+                                  top: 14,
+                                  left: 14,
+                                  child: _RecordingBadge(),
+                                ),
+                            ],
+                          )
+                        : const Center(child: Text('Camera is preparing...')),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          _savedVideoFile == null
+              ? 'No video selected yet.'
+              : 'Selected video: ${_savedVideoFile!.path.split(Platform.pathSeparator).last}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        if (_availableCameras.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Available cameras: ${_availableCameras.length}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ],
     );
   }
 
@@ -461,14 +509,13 @@ class _HomeScreenState extends State<HomeScreen> {
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: recordButtonEnabled ? _toggleRecording : null,
-            icon: Icon(_isRecording
-                ? Icons.stop_circle_outlined
-                : Icons.videocam_outlined),
+            icon: Icon(_isRecording ? Icons.stop_circle_outlined : Icons.videocam_outlined),
             label: Text(_isRecording ? 'Stop Recording' : 'Record Exercise'),
             style: ElevatedButton.styleFrom(
+              backgroundColor: _isRecording ? const Color(0xFFEF4444) : const Color(0xFF1D4ED8),
+              foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             ),
           ),
         ),
@@ -481,8 +528,7 @@ class _HomeScreenState extends State<HomeScreen> {
             label: const Text('Choose from Phone Media'),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             ),
           ),
         ),
@@ -491,12 +537,17 @@ class _HomeScreenState extends State<HomeScreen> {
           width: double.infinity,
           child: FilledButton.icon(
             onPressed: uploadButtonEnabled ? _uploadAndAnalyze : null,
-            icon: const Icon(Icons.cloud_upload_outlined),
-            label: const Text('Upload & Analyze'),
+            icon: _isUploading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2.2),
+                  )
+                : const Icon(Icons.cloud_upload_outlined),
+            label: Text(_isUploading ? 'Uploading...' : 'Upload & Analyze'),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             ),
           ),
         ),
@@ -506,11 +557,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildStatusSection() {
     if (_isUploading) {
-      return const Card(
-        elevation: 0,
+      return const Center(
         child: Padding(
-          padding: EdgeInsets.all(20),
+          padding: EdgeInsets.symmetric(vertical: 10),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
@@ -526,125 +577,61 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (_errorMessage != null) {
-      return Card(
-        elevation: 0,
-        color: const Color(0xFFFFF1F2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.error_outline, color: Color(0xFFB91C1C)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  _errorMessage!,
-                  style: const TextStyle(
-                    color: Color(0xFF7F1D1D),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      return _NoticeBanner(
+        color: const Color(0xFF3B1118),
+        icon: Icons.error_outline,
+        text: _errorMessage!,
+        textColor: const Color(0xFFFCA5A5),
       );
     }
 
     if (_message != null) {
-      return Card(
-        elevation: 0,
-        color: const Color(0xFFEFFCF8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            _message!,
-            style: const TextStyle(
-              color: Color(0xFF14532D),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
+      return _NoticeBanner(
+        color: const Color(0xFF0D1F1A),
+        icon: Icons.check_circle_outline,
+        text: _message!,
+        textColor: const Color(0xFFA7F3D0),
       );
     }
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: const Padding(
-        padding: EdgeInsets.all(16),
-        child: Text(
-          'Status updates will appear here after recording or uploading.',
-          style: TextStyle(color: Color(0xFF5A6F6B)),
-        ),
-      ),
+    return const Text(
+      'Status updates will appear here after recording or uploading.',
+      style: TextStyle(color: Color(0xFFB8C7D9)),
     );
   }
 
   Widget _buildResultSection() {
     if (_result == null) {
-      return Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: const Padding(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Result',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF12312E),
-                ),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'Your movement analysis will appear here after the backend responds.',
-                style: TextStyle(color: Color(0xFF5A6F6B)),
-              ),
-            ],
-          ),
-        ),
+      return const Text(
+        'Your movement analysis will appear here after the backend responds.',
+        style: TextStyle(color: Color(0xFFB8C7D9)),
       );
     }
 
     final statusColor = _statusColor(_result!.movementStatus);
+    final emotionText = _result!.emotion ?? 'No Face Detected';
+    final emotionColor = _emotionColor(emotionText);
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Result',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF12312E),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _ResultMetricCard(
-              title: 'Movement Status',
-              value: _result!.movementStatus,
-              valueColor: statusColor,
-            ),
-            const SizedBox(height: 12),
-            _ResultMetricCard(
-              title: 'Confidence Score',
-              value: _formatConfidence(_result!.confidenceScore),
-              valueColor: const Color(0xFF0F766E),
-            ),
-          ],
+    return Column(
+      children: [
+        _ResultMetricCard(
+          title: 'Movement Status',
+          value: _result!.movementStatus,
+          valueColor: statusColor,
         ),
-      ),
+        const SizedBox(height: 12),
+        _ResultMetricCard(
+          title: 'Confidence Score',
+          value: _formatConfidence(_result!.confidenceScore),
+          valueColor: const Color(0xFF60A5FA),
+        ),
+        const SizedBox(height: 12),
+        _ResultMetricCard(
+          title: 'Emotion',
+          value: emotionText,
+          valueColor: emotionColor,
+        ),
+      ],
     );
   }
 }
@@ -697,9 +684,9 @@ class _ResultMetricCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFA),
+        color: const Color(0xFF0D1422),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE1E8E7)),
+        border: Border.all(color: const Color(0xFF24334B)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -709,7 +696,7 @@ class _ResultMetricCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF5A6F6B),
+              color: Color(0xFF9FB1CA),
             ),
           ),
           const SizedBox(height: 8),
@@ -719,6 +706,49 @@ class _ResultMetricCard extends StatelessWidget {
               fontSize: 20,
               fontWeight: FontWeight.w800,
               color: valueColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoticeBanner extends StatelessWidget {
+  const _NoticeBanner({
+    required this.color,
+    required this.icon,
+    required this.text,
+    required this.textColor,
+  });
+
+  final Color color;
+  final IconData icon;
+  final String text;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: textColor.withOpacity(0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: textColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
