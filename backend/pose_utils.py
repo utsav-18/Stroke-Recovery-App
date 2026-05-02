@@ -7,6 +7,16 @@ import cv2
 import mediapipe as mp
 import numpy as np
 
+# Compatibility check: some Mediapipe distributions (tasks-only) do not expose
+# the legacy `mp.solutions` namespace used by this code. Raise a clear error
+# when that's the case to guide users to install a compatible package.
+if not hasattr(mp, "solutions"):
+    raise RuntimeError(
+        "Installed mediapipe package does not expose `mp.solutions`. "
+        "Install a mediapipe release that provides the legacy Solutions API, "
+        "for example: `pip install 'mediapipe==0.10.35'` or try `pip install --upgrade mediapipe`."
+    )
+
 
 @dataclass
 class PoseSeries:
@@ -36,13 +46,34 @@ def _compute_angle(point_a: np.ndarray, point_b: np.ndarray, point_c: np.ndarray
     return float(np.degrees(np.arccos(cosine)))
 
 
-def _extract_pose_series(video_path: str, min_visibility: float = 0.4) -> PoseSeries:
-    """Extract required pose landmarks across all valid frames."""
+def _extract_pose_series(
+    video_path: str,
+    min_visibility: float = 0.4,
+    max_frames: int = 30,
+    frame_skip: int = 5,
+) -> tuple[PoseSeries, int]:
+    """Extract required pose landmarks from a bounded sample of frames."""
     pose_landmarks = mp.solutions.pose.PoseLandmark
 
     capture = cv2.VideoCapture(video_path)
     if not capture.isOpened():
         raise ValueError("Unable to open video file.")
+
+    sample_step = max(1, frame_skip)
+    raw_frame_limit = max_frames * sample_step
+    frames: List[np.ndarray] = []
+
+    while len(frames) < raw_frame_limit:
+        ok, frame = capture.read()
+        if not ok:
+            break
+        frames.append(frame)
+
+    capture.release()
+
+    frames = frames[::sample_step][:max_frames]
+    if not frames:
+        raise ValueError("No frames available for pose extraction.")
 
     left_shoulder: List[np.ndarray] = []
     left_elbow: List[np.ndarray] = []
@@ -63,11 +94,7 @@ def _extract_pose_series(video_path: str, min_visibility: float = 0.4) -> PoseSe
         min_detection_confidence=0.5,
         min_tracking_confidence=0.5,
     ) as pose:
-        while True:
-            ok, frame = capture.read()
-            if not ok:
-                break
-
+        for frame in frames:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = pose.process(rgb_frame)
             if not results.pose_landmarks:
@@ -106,8 +133,6 @@ def _extract_pose_series(video_path: str, min_visibility: float = 0.4) -> PoseSe
             right_index.append(np.array([right_points[3].x, right_points[3].y, right_points[3].z], dtype=float))
             right_hip.append(np.array([right_points[4].x, right_points[4].y, right_points[4].z], dtype=float))
 
-    capture.release()
-
     if not left_wrist or not right_wrist:
         raise ValueError("No reliable pose landmarks detected in video.")
 
@@ -122,12 +147,20 @@ def _extract_pose_series(video_path: str, min_visibility: float = 0.4) -> PoseSe
         right_wrist=np.vstack(right_wrist),
         right_index=np.vstack(right_index),
         right_hip=np.vstack(right_hip),
+    ), len(frames)
+
+
+def extract_features_from_video(
+    video_path: str,
+    max_frames: int = 30,
+    frame_skip: int = 5,
+) -> tuple[np.ndarray, int]:
+    """Build model-ready features from a bounded sample of pose keypoints."""
+    series, frames_processed = _extract_pose_series(
+        video_path,
+        max_frames=max_frames,
+        frame_skip=frame_skip,
     )
-
-
-def extract_features_from_video(video_path: str) -> np.ndarray:
-    """Build model-ready features from pose keypoints in a video."""
-    series = _extract_pose_series(video_path)
 
     left_shoulder_angles = [
         _compute_angle(series.left_hip[i], series.left_shoulder[i], series.left_elbow[i])
@@ -188,4 +221,4 @@ def extract_features_from_video(video_path: str) -> np.ndarray:
         dtype=float,
     )
 
-    return features
+    return features, frames_processed

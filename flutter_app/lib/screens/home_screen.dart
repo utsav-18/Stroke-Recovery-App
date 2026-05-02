@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/analyze_result.dart';
@@ -16,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
+  final ImagePicker _imagePicker = ImagePicker();
 
   CameraController? _cameraController;
   List<CameraDescription> _availableCameras = const [];
@@ -170,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final videoFile = _savedVideoFile;
     if (videoFile == null) {
-      _showSnackBar('Record a video before uploading.');
+      _showSnackBar('Record or choose a video before uploading.');
       return;
     }
 
@@ -236,6 +238,55 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _pickVideoFromPhoneMedia() async {
+    if (_isUploading) {
+      _showSnackBar('Wait for the current upload to finish.');
+      return;
+    }
+
+    if (_isRecording) {
+      await _toggleRecording();
+    }
+
+    try {
+      final pickedVideo = await _imagePicker.pickVideo(
+        source: ImageSource.gallery,
+      );
+
+      if (pickedVideo == null) {
+        return;
+      }
+
+      final selectedFile = File(pickedVideo.path);
+      if (!await selectedFile.exists()) {
+        _showSnackBar('Selected video could not be found.');
+        return;
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _savedVideoFile = selectedFile;
+        _result = null;
+        _errorMessage = null;
+        _message = 'Selected video from phone media: ${selectedFile.path}';
+      });
+
+      _showSnackBar('Video selected from phone media.');
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _errorMessage = 'Could not pick video: $error';
+      });
+      _showSnackBar('Could not open phone media: $error');
+    }
+  }
+
   void _showSnackBar(String text) {
     if (!mounted) {
       return;
@@ -267,7 +318,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final cameraController = _cameraController;
-    final cameraReady = cameraController != null && cameraController.value.isInitialized;
+    final cameraReady =
+        cameraController != null && cameraController.value.isInitialized;
 
     return Scaffold(
       appBar: AppBar(
@@ -328,7 +380,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCameraCard(CameraController? cameraController, bool cameraReady) {
+  Widget _buildCameraCard(
+      CameraController? cameraController, bool cameraReady) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -399,6 +452,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildActionButtons(bool cameraReady) {
     final recordButtonEnabled = cameraReady && !_isUploading;
+    final mediaButtonEnabled = !_isUploading;
     final uploadButtonEnabled = !_isUploading;
 
     return Column(
@@ -407,11 +461,28 @@ class _HomeScreenState extends State<HomeScreen> {
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: recordButtonEnabled ? _toggleRecording : null,
-            icon: Icon(_isRecording ? Icons.stop_circle_outlined : Icons.videocam_outlined),
+            icon: Icon(_isRecording
+                ? Icons.stop_circle_outlined
+                : Icons.videocam_outlined),
             label: Text(_isRecording ? 'Stop Recording' : 'Record Exercise'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: mediaButtonEnabled ? _pickVideoFromPhoneMedia : null,
+            icon: const Icon(Icons.video_library_outlined),
+            label: const Text('Choose from Phone Media'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
             ),
           ),
         ),
@@ -424,7 +495,8 @@ class _HomeScreenState extends State<HomeScreen> {
             label: const Text('Upload & Analyze'),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
             ),
           ),
         ),

@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:video_compress/video_compress.dart';
 
 import '../models/analyze_result.dart';
 
@@ -9,19 +11,25 @@ class ApiService {
   ApiService({String? baseUrl})
       : _dio = Dio(
           BaseOptions(
-            // Use 10.0.2.2 on the Android emulator. Replace it with your PC's LAN IP for a real device.
-            baseUrl: baseUrl ?? const String.fromEnvironment(
-              'API_BASE_URL',
-              defaultValue: 'http://10.0.2.2:8000',
-            ),
-            connectTimeout: const Duration(seconds: 30),
-            receiveTimeout: const Duration(seconds: 30),
-            sendTimeout: const Duration(seconds: 30),
-            contentType: 'multipart/form-data',
+            baseUrl: _resolveBaseUrl(baseUrl),
+            connectTimeout: const Duration(seconds: 120),
+            receiveTimeout: const Duration(seconds: 120),
+            sendTimeout: const Duration(seconds: 120),
           ),
         );
 
   final Dio _dio;
+
+  static String _resolveBaseUrl(String? baseUrl) {
+    final resolvedBaseUrl =
+        baseUrl ??
+        const String.fromEnvironment(
+          'API_BASE_URL',
+          defaultValue: 'http://10.1.32.171:8000',
+        );
+    print('API Base URL: $resolvedBaseUrl');
+    return resolvedBaseUrl;
+  }
 
   Future<AnalyzeResult> uploadVideo(File video) async {
     if (!await video.exists()) {
@@ -29,17 +37,26 @@ class ApiService {
     }
 
     try {
-      final fileName = video.path.split(Platform.pathSeparator).last;
+      final originalSize = await video.length();
+      print('Original size: $originalSize bytes');
+
+      final compressedVideo = await _compressVideo(video);
+      final compressedSize = await compressedVideo.length();
+      print('Compressed size: $compressedSize bytes');
+
+      final fileName = compressedVideo.path.split(Platform.pathSeparator).last;
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(
-          video.path,
+          compressedVideo.path,
           filename: fileName,
+          contentType: MediaType('video', 'mp4'),
         ),
       });
 
       final response = await _dio.post<dynamic>(
         '/analyze',
         data: formData,
+        options: Options(contentType: Headers.multipartFormDataContentType),
       );
 
       if (response.statusCode == null ||
@@ -52,14 +69,7 @@ class ApiService {
 
       return _parseAnalyzeResult(response.data);
     } on DioException catch (error) {
-      if (error.type == DioExceptionType.connectionTimeout ||
-          error.type == DioExceptionType.sendTimeout ||
-          error.type == DioExceptionType.receiveTimeout ||
-          error.type == DioExceptionType.connectionError) {
-        throw const SocketException(
-          'Network error: unable to reach the analysis backend.',
-        );
-      }
+      print('API ERROR: $error');
 
       final response = error.response;
       if (response != null) {
@@ -68,12 +78,14 @@ class ApiService {
             ? jsonEncode(responseBody)
             : responseBody?.toString() ?? 'No response body';
 
-        throw HttpException(
-          'Server error (${response.statusCode}): $bodyText',
+        throw Exception(
+          'Failed to connect: Server error (${response.statusCode}): $bodyText',
         );
       }
 
-      throw HttpException('Network error: ${error.message ?? 'request failed'}');
+      throw Exception(
+        'Failed to connect: ${error.message ?? 'request failed'}',
+      );
     } on FormatException {
       rethrow;
     } on SocketException {
@@ -81,8 +93,26 @@ class ApiService {
     } on FileSystemException {
       rethrow;
     } catch (error) {
-      throw FormatException('Unexpected error while analyzing video: $error');
+      print('API ERROR: $error');
+      throw Exception('Failed to connect: $error');
     }
+  }
+
+  Future<File> _compressVideo(File video) async {
+    final mediaInfo = await VideoCompress.compressVideo(
+      video.path,
+      quality: VideoQuality.Res640x480Quality,
+      deleteOrigin: false,
+      includeAudio: true,
+      frameRate: 30,
+    );
+
+    final compressedFile = mediaInfo?.file;
+    if (compressedFile == null || !await compressedFile.exists()) {
+      throw Exception('Failed to compress video file.');
+    }
+
+    return compressedFile;
   }
 
   AnalyzeResult _parseAnalyzeResult(dynamic data) {

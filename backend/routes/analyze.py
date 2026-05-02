@@ -107,6 +107,7 @@ async def analyze_video(file: UploadFile = File(...), debug: bool = Query(False)
     temp_path = ""
 
     try:
+        print("Processing started")
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
             temp_path = temp_file.name
 
@@ -116,7 +117,12 @@ async def analyze_video(file: UploadFile = File(...), debug: bool = Query(False)
                     break
                 temp_file.write(chunk)
 
-        features = extract_features_from_video(temp_path)
+        features, frames_processed = extract_features_from_video(
+            temp_path,
+            max_frames=30,
+            frame_skip=5,
+        )
+        print("Frames processed:", frames_processed)
         model = load_model()
 
         aligned_features = _align_feature_vector(model, features)
