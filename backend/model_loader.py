@@ -284,9 +284,7 @@ def load_emotion_model(model_filename: str = "emotion_model.pkl") -> Any:
         print(f"Emotion model load error: {exc}")
         return None
 
-
 emotion_model = None
-
 
 def get_emotion_model():
     global emotion_model
