@@ -2,12 +2,10 @@ from functools import lru_cache
 import os
 import sys
 from typing import Any
-
 import joblib
 import numpy as np
 import torch
 import torch.nn as nn
-
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 emotion_model_path = os.path.join(BASE_DIR, "emotion_model.pkl")
