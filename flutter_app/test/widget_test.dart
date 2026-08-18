@@ -1,19 +1,12 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:stroke_recovery_monitoring/main.dart';
 
 void main() {
-  testWidgets('App launches with the recovery title', (WidgetTester tester) async {
+  testWidgets('App launches with the RehabTrack login title', (tester) async {
     await tester.pumpWidget(const StrokeRecoveryApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Stroke Recovery Monitor'), findsOneWidget);
+    expect(find.text('RehabTrack'), findsOneWidget);
   });
 }

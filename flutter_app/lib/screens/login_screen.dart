@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'home_screen.dart';
+import '../services/api_service.dart';
+import 'patient_home_screen.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -14,6 +15,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -44,14 +47,36 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
-  void _submitLogin() {
+  Future<void> _submitLogin() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
-    );
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await ApiService().login(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => const PatientHomeScreen()),
+      );
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -72,10 +97,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(Icons.monitor_heart_rounded, size: 52, color: Color(0xFF2F80FF)),
+                        Image.asset('assets/images/app_logo.png', height: 80),
                         const SizedBox(height: 16),
                         const Text(
-                          'Stroke Recovery Monitor',
+                          'RehabTrack',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
                         ),
@@ -106,10 +131,20 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
+                        if (_errorMessage != null) ...[
+                          Text(
+                            _errorMessage!,
+                            style: const TextStyle(color: Colors.redAccent),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
                         FilledButton.icon(
-                          onPressed: _submitLogin,
-                          icon: const Icon(Icons.login_rounded),
-                          label: const Text('Login'),
+                          onPressed: _isLoading ? null : _submitLogin,
+                          icon: _isLoading
+                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.login_rounded),
+                          label: Text(_isLoading ? 'Logging in...' : 'Login'),
                         ),
                         const SizedBox(height: 12),
                         TextButton(
