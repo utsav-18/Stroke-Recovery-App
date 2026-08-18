@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'home_screen.dart';
+import '../services/api_service.dart';
 import 'login_screen.dart';
+import 'patient_home_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -14,6 +15,8 @@ class _SignupScreenState extends State<SignupScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -44,14 +47,38 @@ class _SignupScreenState extends State<SignupScreen> {
     return null;
   }
 
-  void _submitSignup() {
+  Future<void> _submitSignup() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
-    );
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await ApiService().register(
+        email: _emailController.text,
+        password: _passwordController.text,
+        name: 'New Patient', // Minimal registration
+        role: 'PATIENT',
+      );
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => const PatientHomeScreen()),
+      );
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -72,10 +99,10 @@ class _SignupScreenState extends State<SignupScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(Icons.person_add_alt_1_rounded, size: 52, color: Color(0xFF2F80FF)),
+                        Image.asset('assets/images/app_logo.png', height: 80),
                         const SizedBox(height: 16),
                         const Text(
-                          'Create Account',
+                          'RehabTrack',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
                         ),
@@ -106,10 +133,20 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
+                        if (_errorMessage != null) ...[
+                          Text(
+                            _errorMessage!,
+                            style: const TextStyle(color: Colors.redAccent),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
                         FilledButton.icon(
-                          onPressed: _submitSignup,
-                          icon: const Icon(Icons.person_add_rounded),
-                          label: const Text('Signup'),
+                          onPressed: _isLoading ? null : _submitSignup,
+                          icon: _isLoading
+                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.person_add_rounded),
+                          label: Text(_isLoading ? 'Signing up...' : 'Signup'),
                         ),
                         const SizedBox(height: 12),
                         TextButton(

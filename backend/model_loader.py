@@ -215,9 +215,9 @@ class EmotionModel(nn.Module):
 
 def _ensure_numpy_pickle_compat() -> None:
     """Bridge pickle module-path differences across NumPy versions."""
-    if "numpy._core" not in sys.modules:
-        # Some pickled models reference numpy._core (NumPy 2+); older NumPy exposes numpy.core.
-        sys.modules["numpy._core"] = np.core
+    # Do NOT map sys.modules["numpy._core"] = np.core directly, as it causes
+    # SystemError: D:\a\1\s\Objects\structseq.c:481: bad argument to internal function
+    # in Python 3.10 / NumPy 1.x when unpickling.
 
     # Some pickles reference concrete submodules; map them when available.
     try:
