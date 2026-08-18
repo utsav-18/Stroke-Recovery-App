@@ -576,7 +576,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    if (_errorMessage != null) {
+    if (_errorMessage != null && _errorMessage!.isNotEmpty) {
       return _NoticeBanner(
         color: const Color(0xFF3B1118),
         icon: Icons.error_outline,
@@ -585,7 +585,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    if (_message != null) {
+    if (_message != null && _message!.isNotEmpty) {
       return _NoticeBanner(
         color: const Color(0xFF0D1F1A),
         icon: Icons.check_circle_outline,
@@ -609,7 +609,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final statusColor = _statusColor(_result!.movementStatus);
-    final emotionText = _result!.emotion ?? 'No Face Detected';
+    final emotionText = _result!.emotion;
     final emotionColor = _emotionColor(emotionText);
 
     return Column(
@@ -735,7 +735,7 @@ class _NoticeBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: textColor.withOpacity(0.3)),
+        border: Border.all(color: textColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

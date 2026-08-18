@@ -5,15 +5,24 @@ import importlib
 
 from typing import Any
 
+from db import check_db_connection
+
 router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
 async def health() -> dict:
+    db_status = "ok"
+    try:
+        check_db_connection()
+    except Exception:
+        db_status = "error"
+
     return {
         "status": "ok",
         "service": "stroke-recovery-monitoring-backend",
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "database": db_status,
     }
 
 

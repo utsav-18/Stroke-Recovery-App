@@ -7,8 +7,11 @@ from typing import Any
 
 import cv2
 import numpy as np
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
+from db import get_db
 from emotion_utils import predict_emotion
 from model_loader import load_model
 from pose_utils import extract_features_from_video
@@ -116,7 +119,12 @@ def _extract_frames_from_video(video_path: str) -> list[np.ndarray]:
 
 
 @router.post("/analyze")
-async def analyze_video(file: UploadFile = File(...), debug: bool = Query(False)) -> dict:
+async def analyze_video(
+    file: UploadFile = File(...),
+    debug: bool = Query(False),
+    session_id: int | None = Form(None),
+    db: Session = Depends(get_db),
+) -> dict:
     if not file.filename:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing filename.")
 
@@ -178,6 +186,26 @@ async def analyze_video(file: UploadFile = File(...), debug: bool = Query(False)
             "confidence_score": round(float(confidence_score), 4),
             "emotion": final_emotion,
         }
+
+        if session_id is not None:
+            db.execute(
+                text("""
+                INSERT INTO analysis_results (session_id, movement_status, confidence_score, emotion, analyzed_at)
+                VALUES (:session_id, :movement_status, :confidence_score, :emotion, NOW())
+                ON CONFLICT (session_id) DO UPDATE SET 
+                    movement_status = EXCLUDED.movement_status,
+                    confidence_score = EXCLUDED.confidence_score,
+                    emotion = EXCLUDED.emotion,
+                    analyzed_at = NOW()
+                """),
+                {
+                    "session_id": session_id,
+                    "movement_status": movement_status,
+                    "confidence_score": round(float(confidence_score), 4),
+                    "emotion": final_emotion,
+                }
+            )
+            db.commit()
 
         if debug:
             shoulder_range = float(np.mean(features[6:8]))
