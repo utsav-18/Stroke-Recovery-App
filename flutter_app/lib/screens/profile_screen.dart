@@ -53,18 +53,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Edit Profile'),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          title: const Text('Edit Patient Demographics', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name')),
-                const SizedBox(height: 8),
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Patient Legal Name')),
+                const SizedBox(height: 10),
                 TextField(controller: dobController, decoration: const InputDecoration(labelText: 'Date of Birth (YYYY-MM-DD)')),
-                const SizedBox(height: 8),
-                TextField(controller: genderController, decoration: const InputDecoration(labelText: 'Gender')),
-                const SizedBox(height: 8),
-                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone')),
+                const SizedBox(height: 10),
+                TextField(controller: genderController, decoration: const InputDecoration(labelText: 'Biological Gender')),
+                const SizedBox(height: 10),
+                TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Contact Phone Number')),
               ],
             ),
           ),
@@ -75,7 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Save'),
+              child: const Text('Save Record'),
             ),
           ],
         );
@@ -121,68 +126,93 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Profile'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Patient Clinical Record',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+        ),
         actions: [
           IconButton(
             onPressed: _isLoading || _patient == null ? null : _editProfile,
-            icon: const Icon(Icons.edit_rounded),
+            icon: const Icon(Icons.edit_outlined, color: Color(0xFF0D47A1)),
+            tooltip: 'Edit Record',
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF0D47A1)))
           : _errorMessage != null
-              ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent)))
+              ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Color(0xFFDC2626))))
               : _patient == null
-                  ? const Center(child: Text('No profile data.'))
+                  ? const Center(child: Text('No patient record found.'))
                   : Padding(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(20),
+                            padding: const EdgeInsets.all(22),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF111C2E),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: const Color(0xFF24314A)),
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x06000000),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
                             ),
                             child: Column(
                               children: [
                                 Container(
-                                  width: 72,
-                                  height: 72,
+                                  width: 64,
+                                  height: 64,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: const Color(0xFF2F80FF).withValues(alpha: 0.18),
+                                    color: const Color(0xFF0D47A1).withValues(alpha: 0.08),
                                   ),
-                                  child: const Icon(Icons.person_rounded, size: 36, color: Color(0xFF61E4C5)),
+                                  child: const Icon(Icons.person_rounded, size: 34, color: Color(0xFF0D47A1)),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 14),
                                 Text(
                                   _patient!.name,
-                                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
                                 ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  _patient!.patientCode,
-                                  style: const TextStyle(color: Color(0xFF9FB1CA)),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'Medical Record Number: ${_patient!.patientCode}',
+                                    style: const TextStyle(color: Color(0xFF475569), fontSize: 12, fontWeight: FontWeight.w600),
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 20),
-                          _InfoTile(label: 'Date of birth', value: _patient!.dateOfBirth.isEmpty ? 'Not set' : _patient!.dateOfBirth),
-                          _InfoTile(label: 'Gender', value: _patient!.gender.isEmpty ? 'Not set' : _patient!.gender),
-                          _InfoTile(label: 'Phone', value: _patient!.phone.isEmpty ? 'Not set' : _patient!.phone),
+                          const SizedBox(height: 16),
+                          _InfoTile(label: 'Date of Birth', value: _patient!.dateOfBirth.isEmpty ? 'Unspecified' : _patient!.dateOfBirth),
+                          _InfoTile(label: 'Biological Gender', value: _patient!.gender.isEmpty ? 'Unspecified' : _patient!.gender),
+                          _InfoTile(label: 'Primary Phone', value: _patient!.phone.isEmpty ? 'Unspecified' : _patient!.phone),
                           const Spacer(),
-                          FilledButton.icon(
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFFECACA)),
+                              foregroundColor: const Color(0xFFDC2626),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
                             onPressed: _logout,
-                            icon: const Icon(Icons.logout_rounded),
-                            label: const Text('Logout'),
+                            icon: const Icon(Icons.logout_rounded, size: 18),
+                            label: const Text('Sign Out of Patient Portal'),
                           ),
                         ],
                       ),
@@ -200,18 +230,18 @@ class _InfoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF111C2E),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF24314A)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Color(0xFF9FB1CA))),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
+          Text(label, style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w500)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0F172A), fontSize: 13)),
         ],
       ),
     );

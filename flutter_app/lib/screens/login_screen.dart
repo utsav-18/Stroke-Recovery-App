@@ -29,11 +29,11 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _validateEmail(String? value) {
     final text = value?.trim() ?? '';
     if (text.isEmpty) {
-      return 'Email is required';
+      return 'Email address is required';
     }
     final emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
     if (!emailPattern.hasMatch(text)) {
-      return 'Enter a valid email address';
+      return 'Please enter a valid clinical email address';
     }
     return null;
   }
@@ -83,6 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showServerSettingsDialog() {
     final controller = TextEditingController(text: ApiService().currentBaseUrl);
     String? statusMsg;
+    bool? isSuccess;
     bool isChecking = false;
 
     showDialog<void>(
@@ -91,11 +92,24 @@ class _LoginScreenState extends State<LoginScreen> {
         return StatefulBuilder(
           builder: (dialogCtx, setDialogState) {
             return AlertDialog(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
               title: const Row(
                 children: [
-                  Icon(Icons.dns_outlined, color: Color(0xFF67B7F7)),
-                  SizedBox(width: 8),
-                  Text('Server Settings', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Icon(Icons.dns_outlined, color: Color(0xFF0D47A1), size: 22),
+                  SizedBox(width: 10),
+                  Text(
+                    'Clinical Server Settings',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
                 ],
               ),
               content: SingleChildScrollView(
@@ -104,16 +118,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      'Backend API URL for mobile app connection:',
-                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                      'Target API endpoint for rehabilitation telemetry:',
+                      style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: controller,
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
                       decoration: const InputDecoration(
-                        labelText: 'API Base URL',
+                        labelText: 'Endpoint URL',
                         hintText: 'https://...',
-                        border: OutlineInputBorder(),
                         isDense: true,
                       ),
                     ),
@@ -124,6 +138,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         ActionChip(
                           label: const Text('Render Cloud', style: TextStyle(fontSize: 11)),
+                          backgroundColor: const Color(0xFFF1F5F9),
+                          side: const BorderSide(color: Color(0xFFCBD5E1)),
                           onPressed: () {
                             setDialogState(() {
                               controller.text = AppConfig.defaultCloudUrl;
@@ -131,7 +147,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                         ),
                         ActionChip(
-                          label: const Text('Local Wi-Fi', style: TextStyle(fontSize: 11)),
+                          label: const Text('Local Hospital Wi-Fi', style: TextStyle(fontSize: 11)),
+                          backgroundColor: const Color(0xFFF1F5F9),
+                          side: const BorderSide(color: Color(0xFFCBD5E1)),
                           onPressed: () {
                             setDialogState(() {
                               controller.text = AppConfig.defaultLocalUrl;
@@ -142,15 +160,27 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 12),
                     if (statusMsg != null)
-                      Text(
-                        statusMsg!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: statusMsg!.contains('✓') ? Colors.greenAccent : Colors.redAccent,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            isSuccess == true ? Icons.check_circle_outline : Icons.error_outline,
+                            size: 16,
+                            color: isSuccess == true ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              statusMsg!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isSuccess == true ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     OutlinedButton.icon(
                       onPressed: isChecking
                           ? null
@@ -158,17 +188,19 @@ class _LoginScreenState extends State<LoginScreen> {
                               setDialogState(() {
                                 isChecking = true;
                                 statusMsg = 'Testing connection...';
+                                isSuccess = null;
                               });
                               final ok = await ApiService().testConnection(controller.text);
                               setDialogState(() {
                                 isChecking = false;
-                                statusMsg = ok ? '✓ Connected to backend!' : '✗ Could not connect';
+                                isSuccess = ok;
+                                statusMsg = ok ? 'Connection established (HTTP 200)' : 'Unable to connect to host';
                               });
                             },
                       icon: isChecking
                           ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                           : const Icon(Icons.wifi_tethering, size: 16),
-                      label: const Text('Test Connection'),
+                      label: const Text('Verify Connection'),
                     ),
                   ],
                 ),
@@ -184,10 +216,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     Navigator.of(ctx).pop();
                     setState(() {});
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Server URL set to: ${ApiService().currentBaseUrl}')),
+                      SnackBar(content: Text('Endpoint configured: ${ApiService().currentBaseUrl}')),
                     );
                   },
-                  child: const Text('Save'),
+                  child: const Text('Apply Changes'),
                 ),
               ],
             );
@@ -200,12 +232,34 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D47A1).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.local_hospital_rounded, color: Color(0xFF0D47A1), size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'RehabTrack Clinical',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: const Icon(Icons.settings_outlined, color: Color(0xFF475569)),
             tooltip: 'Server Settings',
             onPressed: _showServerSettingsDialog,
           ),
@@ -214,56 +268,91 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
               child: Card(
+                color: Colors.white,
+                elevation: 2,
+                shadowColor: Colors.black.withValues(alpha: 0.05),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(28),
                   child: Form(
                     key: _formKey,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Image.asset('assets/images/app_logo.png', height: 80),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'RehabTrack',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+                        Center(
+                          child: Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0D47A1).withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(
+                              Icons.accessibility_new_rounded,
+                              size: 34,
+                              color: Color(0xFF0D47A1),
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 18),
                         const Text(
-                          'Sign in to review exercise recordings and recovery analysis.',
+                          'Patient Portal',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Color(0xFFB8C7D9)),
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                            letterSpacing: -0.5,
+                          ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Physical Medicine & Rehabilitation Department',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
                         Center(
                           child: InkWell(
                             onTap: _showServerSettingsDialog,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
-                                color: const Color(0x10FFFFFF),
-                                borderRadius: BorderRadius.circular(12),
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.cloud_done_outlined, size: 14, color: Color(0xFF67B7F7)),
+                                  const Icon(Icons.cloud_done_outlined, size: 14, color: Color(0xFF0D47A1)),
                                   const SizedBox(width: 6),
                                   Flexible(
                                     child: Text(
                                       ApiService().currentBaseUrl,
-                                      style: const TextStyle(fontSize: 11, color: Color(0xFF67B7F7)),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF0D47A1),
+                                      ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                   const SizedBox(width: 4),
-                                  const Icon(Icons.edit_outlined, size: 12, color: Colors.grey),
+                                  const Icon(Icons.edit_outlined, size: 12, color: Color(0xFF94A3B8)),
                                 ],
                               ),
                             ),
@@ -274,9 +363,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           validator: _validateEmail,
+                          style: const TextStyle(color: Color(0xFF0F172A), fontSize: 14),
                           decoration: const InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.email_outlined),
+                            labelText: 'Patient Email',
+                            hintText: 'patient@hospital.org',
+                            prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF64748B)),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -284,35 +375,51 @@ class _LoginScreenState extends State<LoginScreen> {
                           controller: _passwordController,
                           obscureText: true,
                           validator: _validatePassword,
+                          style: const TextStyle(color: Color(0xFF0F172A), fontSize: 14),
                           decoration: const InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: Icon(Icons.lock_outline),
+                            labelText: 'Account Password',
+                            prefixIcon: Icon(Icons.lock_outline, color: Color(0xFF64748B)),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
                         if (_errorMessage != null) ...[
-                          Text(
-                            _errorMessage!,
-                            style: const TextStyle(color: Colors.redAccent),
-                            textAlign: TextAlign.center,
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF2F2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFFECACA)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 16),
                         ],
                         FilledButton.icon(
                           onPressed: _isLoading ? null : _submitLogin,
                           icon: _isLoading
-                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                              : const Icon(Icons.login_rounded),
-                          label: Text(_isLoading ? 'Logging in...' : 'Login'),
+                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.lock_open_rounded, size: 18),
+                          label: Text(_isLoading ? 'Authenticating...' : 'Sign In to Patient Portal'),
                         ),
-                        const SizedBox(height: 12),
-                        TextButton(
+                        const SizedBox(height: 14),
+                        OutlinedButton(
                           onPressed: () {
                             Navigator.of(context).push(
                               MaterialPageRoute<void>(builder: (_) => const SignupScreen()),
                             );
                           },
-                          child: const Text('Don\'t have an account? Signup'),
+                          child: const Text('New Patient Registration'),
                         ),
                       ],
                     ),

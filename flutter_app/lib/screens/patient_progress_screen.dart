@@ -42,42 +42,65 @@ class _PatientProgressScreenState extends State<PatientProgressScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Progress'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Rehabilitation Progress & Analytics',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF0F172A),
+          ),
+        ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF0D47A1)),
+                  SizedBox(height: 14),
+                  Text('Retrieving Kinematic Telemetry...', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+                ],
+              ),
+            )
           : _errorMessage != null
-              ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent)))
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(_errorMessage!, style: const TextStyle(color: Color(0xFFDC2626), fontSize: 13)),
+                  ),
+                )
               : _progress == null
-                  ? const Center(child: Text('No progress data.'))
+                  ? const Center(child: Text('No rehabilitation records available.'))
                   : ListView(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                       children: [
-                        _TrendCard(
-                          title: 'Confidence Trend',
-                          icon: Icons.trending_up_rounded,
-                          trend: _progress!.confidenceTrend,
-                        ),
-                        const SizedBox(height: 16),
-                        _HistoryCard(
-                          title: 'Movement History',
-                          icon: Icons.timeline_rounded,
-                          history: _progress!.movementHistory,
-                        ),
-                        const SizedBox(height: 16),
-                        _EmotionCard(
-                          title: 'Recent Emotion Results',
-                          icon: Icons.mood_rounded,
-                          history: _progress!.emotionHistory,
-                        ),
-                        const SizedBox(height: 16),
                         _MiniGrid(
                           totalSessions: _progress!.totalSessions,
                           latestStatus: _progress!.latestMovementStatus,
                           averageConfidence: _progress!.averageConfidence,
+                        ),
+                        const SizedBox(height: 14),
+                        _TrendCard(
+                          title: 'Confidence Index History',
+                          icon: Icons.trending_up_rounded,
+                          trend: _progress!.confidenceTrend,
+                        ),
+                        const SizedBox(height: 14),
+                        _HistoryCard(
+                          title: 'Movement Recovery Trajectory',
+                          icon: Icons.history_rounded,
+                          history: _progress!.movementHistory,
+                        ),
+                        const SizedBox(height: 14),
+                        _EmotionCard(
+                          title: 'Session Affect Observations',
+                          icon: Icons.psychology_outlined,
+                          history: _progress!.emotionHistory,
                         ),
                       ],
                     ),
@@ -98,19 +121,20 @@ class _TrendCard extends StatelessWidget {
       title: title,
       icon: icon,
       child: trend.isEmpty
-          ? const Text('No confidence data yet', style: TextStyle(color: Color(0xFFB7C8D9)))
+          ? const Text('No confidence trajectory logged yet', style: TextStyle(color: Color(0xFF64748B), fontSize: 13))
           : Wrap(
               spacing: 8,
               runSpacing: 8,
               children: trend.map((v) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1C375E),
-                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
                 ),
                 child: Text(
                   '${(v * 100).toStringAsFixed(0)}%',
-                  style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF61E4C5)),
+                  style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0D47A1), fontSize: 13),
                 ),
               )).toList(),
             ),
@@ -131,15 +155,21 @@ class _HistoryCard extends StatelessWidget {
       title: title,
       icon: icon,
       child: history.isEmpty
-          ? const Text('No movement data yet', style: TextStyle(color: Color(0xFFB7C8D9)))
+          ? const Text('No session movement records yet', style: TextStyle(color: Color(0xFF64748B), fontSize: 13))
           : Column(
-              children: history.map((entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
+              children: history.map((entry) => Container(
+                margin: const EdgeInsets.only(bottom: 8.0),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(entry.date, style: const TextStyle(color: Color(0xFF9FB1CA))),
-                    Text(entry.status, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                    Text(entry.date, style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w500)),
+                    _ClinicalStatusPill(label: entry.status),
                   ],
                 ),
               )).toList(),
@@ -161,18 +191,30 @@ class _EmotionCard extends StatelessWidget {
       title: title,
       icon: icon,
       child: history.isEmpty
-          ? const Text('No emotion data yet', style: TextStyle(color: Color(0xFFB7C8D9)))
+          ? const Text('No facial affect telemetry recorded', style: TextStyle(color: Color(0xFF64748B), fontSize: 13))
           : Column(
               children: history.map((entry) {
-                final emoji = _getEmoji(entry.emotion);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
+                final iconData = _getEmotionIcon(entry.emotion);
+                final iconColor = _getEmotionColor(entry.emotion);
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
                   child: Row(
                     children: [
-                      Text(emoji, style: const TextStyle(fontSize: 18)),
+                      Icon(iconData, size: 18, color: iconColor),
                       const SizedBox(width: 8),
-                      Expanded(child: Text(entry.emotion, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white))),
-                      Text(entry.date, style: const TextStyle(color: Color(0xFF9FB1CA))),
+                      Expanded(
+                        child: Text(
+                          entry.emotion,
+                          style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF0F172A), fontSize: 13),
+                        ),
+                      ),
+                      Text(entry.date, style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)),
                     ],
                   ),
                 );
@@ -181,13 +223,21 @@ class _EmotionCard extends StatelessWidget {
     );
   }
 
-  String _getEmoji(String emotion) {
+  IconData _getEmotionIcon(String emotion) {
     final lower = emotion.toLowerCase();
-    if (lower.contains('happy')) return '🙂';
-    if (lower.contains('sad')) return '😢';
-    if (lower.contains('angry')) return '😠';
-    if (lower.contains('neutral')) return '😐';
-    return '😶';
+    if (lower.contains('happy')) return Icons.sentiment_satisfied_alt_outlined;
+    if (lower.contains('sad')) return Icons.sentiment_dissatisfied_outlined;
+    if (lower.contains('angry')) return Icons.sentiment_very_dissatisfied_outlined;
+    if (lower.contains('neutral')) return Icons.sentiment_neutral_outlined;
+    return Icons.mood_outlined;
+  }
+
+  Color _getEmotionColor(String emotion) {
+    final lower = emotion.toLowerCase();
+    if (lower.contains('happy')) return const Color(0xFF059669);
+    if (lower.contains('sad')) return const Color(0xFF0284C7);
+    if (lower.contains('angry')) return const Color(0xFFDC2626);
+    return const Color(0xFF64748B);
   }
 }
 
@@ -203,21 +253,31 @@ class _BaseCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF111C2E),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF24314A)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x04000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: const Color(0xFF61E4C5)),
-              const SizedBox(width: 10),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+              Icon(icon, color: const Color(0xFF0D47A1), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Color(0xFF0F172A)),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           child,
         ],
       ),
@@ -240,11 +300,11 @@ class _MiniGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: _MiniTile(label: 'Sessions', value: '$totalSessions')),
-        const SizedBox(width: 12),
-        Expanded(child: _MiniTile(label: 'Status', value: latestStatus)),
-        const SizedBox(width: 12),
-        Expanded(child: _MiniTile(label: 'Avg', value: '${(averageConfidence * 100).toStringAsFixed(0)}%')),
+        Expanded(child: _MiniTile(label: 'Total Sessions', value: '$totalSessions')),
+        const SizedBox(width: 10),
+        Expanded(child: _MiniTile(label: 'Latest Outcome', value: latestStatus)),
+        const SizedBox(width: 10),
+        Expanded(child: _MiniTile(label: 'Confidence Avg', value: '${(averageConfidence * 100).toStringAsFixed(0)}%')),
       ],
     );
   }
@@ -259,25 +319,67 @@ class _MiniTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0E1624),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF24314A)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x03000000),
+            blurRadius: 6,
+            offset: Offset(0, 1),
+          ),
+        ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+            ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF96A9C2))),
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ClinicalStatusPill extends StatelessWidget {
+  const _ClinicalStatusPill({required this.label});
+
+  final String label;
+
+  Color _color() {
+    final lower = label.toLowerCase();
+    if (lower.contains('improved')) return const Color(0xFF059669);
+    if (lower.contains('improving')) return const Color(0xFFD97706);
+    return const Color(0xFF64748B);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = _color();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: c, fontWeight: FontWeight.w700, fontSize: 11),
       ),
     );
   }

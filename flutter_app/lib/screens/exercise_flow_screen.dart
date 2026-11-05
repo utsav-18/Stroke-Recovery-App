@@ -41,7 +41,7 @@ class _ExerciseFlowScreenState extends State<ExerciseFlowScreen> {
     try {
       if (source == ImageSource.camera) {
         setState(() {
-          _statusMessage = 'Invoking VR Game (Level ${widget.assignedLevel})...';
+          _statusMessage = 'Transmitting level ${widget.assignedLevel} start trigger to VR game...';
         });
         try {
           await _apiService.triggerGameStart();
@@ -58,7 +58,7 @@ class _ExerciseFlowScreenState extends State<ExerciseFlowScreen> {
 
       final file = File(picked.path);
       if (!await file.exists()) {
-        setState(() => _errorMessage = 'Selected video could not be found.');
+        setState(() => _errorMessage = 'Selected recording file could not be accessed.');
         return;
       }
 
@@ -75,7 +75,7 @@ class _ExerciseFlowScreenState extends State<ExerciseFlowScreen> {
         _statusMessage = null;
       });
     } catch (error) {
-      setState(() => _errorMessage = 'Could not process video: $error');
+      setState(() => _errorMessage = 'Failed to capture or read exercise video: $error');
     }
   }
 
@@ -99,12 +99,12 @@ class _ExerciseFlowScreenState extends State<ExerciseFlowScreen> {
     setState(() {
       _isUploading = true;
       _errorMessage = null;
-      _statusMessage = 'Uploading and analyzing upper-body movements...';
+      _statusMessage = 'Uploading video & computing upper-limb biomechanics...';
     });
 
     try {
       final session = await _apiService.createSession(
-        exerciseType: 'Level ${widget.assignedLevel} VR Session',
+        exerciseType: 'Level ${widget.assignedLevel} Protocol Session',
         startedAt: DateTime.now(),
       );
 
@@ -122,7 +122,7 @@ class _ExerciseFlowScreenState extends State<ExerciseFlowScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = 'Upload failed: $error');
+      setState(() => _errorMessage = 'Analysis pipeline failed: $error');
     } finally {
       if (mounted) {
         setState(() => _isUploading = false);
@@ -133,7 +133,15 @@ class _ExerciseFlowScreenState extends State<ExerciseFlowScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Exercise Analysis')),
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Clinical Motion Recording',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+        ),
+      ),
       body: SafeArea(
         child: _selectedVideo == null ? _buildSelectionState() : _buildPreviewState(),
       ),
@@ -142,93 +150,90 @@ class _ExerciseFlowScreenState extends State<ExerciseFlowScreen> {
 
   Widget _buildSelectionState() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF132238), Color(0xFF1B3152)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFF28446E)),
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
             ),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.videogame_asset_rounded, color: Color(0xFF61E4C5), size: 22),
+                    const Icon(Icons.assignment_outlined, color: Color(0xFF0D47A1), size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      'PRESCRIBED: LEVEL ${widget.assignedLevel}',
+                      'PRESCRIBED PROTOCOL: LEVEL ${widget.assignedLevel}',
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF61E4C5),
-                        letterSpacing: 0.5,
+                        color: Color(0xFF0D47A1),
+                        letterSpacing: 0.4,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 const Text(
-                  '1. Position your phone to capture your upper body.\n2. Tap below to launch VR game & camera.\n3. Finish exercise and AI results send to doctor.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: Color(0xFFB7C8D9), height: 1.4),
+                  '1. Position camera to capture entire upper-body.\n2. Tap below to synchronize VR game and start camera.\n3. Upon completion, telemetry is sent to physician dashboard.',
+                  textAlign: TextAlign.left,
+                  style: TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.5, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 36),
+          const SizedBox(height: 32),
           FilledButton.icon(
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              backgroundColor: const Color(0xFF2F80FF),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              backgroundColor: const Color(0xFF0D47A1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () => _pickVideo(ImageSource.camera),
-            icon: const Icon(Icons.play_circle_fill_rounded, size: 28),
-            label: const Text('Start VR Session & Record', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            icon: const Icon(Icons.videocam_rounded, size: 24),
+            label: const Text('Start VR Session & Record', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           const Row(
             children: [
-              Expanded(child: Divider(color: Color(0xFF24314A))),
+              Expanded(child: Divider(color: Color(0xFFCBD5E1))),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text('OR', style: TextStyle(color: Color(0xFF9FB1CA), fontWeight: FontWeight.w700)),
+                padding: EdgeInsets.symmetric(horizontal: 14),
+                child: Text('OR', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w700)),
               ),
-              Expanded(child: Divider(color: Color(0xFF24314A))),
+              Expanded(child: Divider(color: Color(0xFFCBD5E1))),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              side: const BorderSide(color: Color(0xFF2F80FF), width: 2),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              side: const BorderSide(color: Color(0xFFCBD5E1)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () => _pickVideo(ImageSource.gallery),
-            icon: const Icon(Icons.folder_open_rounded, size: 26),
-            label: const Text('Upload Video (Testing)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            icon: const Icon(Icons.upload_file_outlined, size: 20, color: Color(0xFF475569)),
+            label: const Text('Select Existing Video File', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
           ),
           if (_errorMessage != null) ...[
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF3B1118),
-                borderRadius: BorderRadius.circular(16),
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFECACA)),
               ),
               child: Text(
                 _errorMessage!,
-                style: const TextStyle(color: Color(0xFFFCA5A5)),
+                style: const TextStyle(color: Color(0xFFDC2626), fontSize: 13),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -240,66 +245,86 @@ class _ExerciseFlowScreenState extends State<ExerciseFlowScreen> {
 
   Widget _buildPreviewState() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Selected Video',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          Row(
+            children: [
+              const Icon(Icons.video_library_outlined, size: 18, color: Color(0xFF0D47A1)),
+              const SizedBox(width: 8),
+              const Text(
+                'Recorded Session Review',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+              ),
+              const Spacer(),
+              Text(
+                'Level ${widget.assignedLevel}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0284C7)),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Expanded(
             child: Container(
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: Colors.black,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF24314A)),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFCBD5E1)),
               ),
               child: _videoController != null && _videoController!.value.isInitialized
                   ? AspectRatio(
                       aspectRatio: _videoController!.value.aspectRatio,
                       child: VideoPlayer(_videoController!),
                     )
-                  : const Center(child: CircularProgressIndicator()),
+                  : const Center(child: CircularProgressIndicator(color: Color(0xFF0D47A1))),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             _selectedVideo!.path.split(Platform.pathSeparator).last,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF9FB1CA)),
+            style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           if (_statusMessage != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 24),
+              padding: const EdgeInsets.only(bottom: 16),
               child: Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0D1F1A),
-                  borderRadius: BorderRadius.circular(16),
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
                 ),
-                child: Text(
-                  _statusMessage!,
-                  style: const TextStyle(color: Color(0xFFA7F3D0)),
-                  textAlign: TextAlign.center,
+                child: Row(
+                  children: [
+                    const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0D47A1))),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _statusMessage!,
+                        style: const TextStyle(color: Color(0xFF1E3A8A), fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           if (_errorMessage != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 24),
+              padding: const EdgeInsets.only(bottom: 16),
               child: Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3B1118),
-                  borderRadius: BorderRadius.circular(16),
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFFECACA)),
                 ),
                 child: Text(
                   _errorMessage!,
-                  style: const TextStyle(color: Color(0xFFFCA5A5)),
+                  style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -310,10 +335,10 @@ class _ExerciseFlowScreenState extends State<ExerciseFlowScreen> {
                 child: OutlinedButton(
                   onPressed: _isUploading ? null : _clearSelection,
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: Color(0xFF24314A), width: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: Color(0xFFCBD5E1)),
                   ),
-                  child: const Text('Record Again', style: TextStyle(color: Colors.white)),
+                  child: const Text('Discard & Re-Record', style: TextStyle(color: Color(0xFF475569))),
                 ),
               ),
               const SizedBox(width: 12),
@@ -321,13 +346,13 @@ class _ExerciseFlowScreenState extends State<ExerciseFlowScreen> {
                 child: FilledButton.icon(
                   onPressed: _isUploading ? null : _analyzeVideo,
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: const Color(0xFF22C55E),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: const Color(0xFF059669),
                   ),
                   icon: _isUploading
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.check_rounded),
-                  label: Text(_isUploading ? 'Analyzing...' : 'Finish & Send to Doctor'),
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.send_rounded, size: 18),
+                  label: Text(_isUploading ? 'Analyzing...' : 'Complete & Send'),
                 ),
               ),
             ],

@@ -213,7 +213,7 @@ class ApiService {
         error.type == DioExceptionType.unknown) {
       return Exception(
         'Cannot reach server at ${_dio.options.baseUrl}.\n'
-        'Tap the ⚙️ Settings icon to check or update the server URL.',
+        'Tap the Settings icon at the top right to verify or update the server URL.',
       );
     }
     return Exception('Failed to connect: ${error.message ?? 'request failed'}');
