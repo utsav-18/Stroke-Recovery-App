@@ -16,6 +16,8 @@ class _PatientProgressScreenState extends State<PatientProgressScreen> {
   ProgressSummary? _progress;
   bool _isLoading = true;
   String? _errorMessage;
+  int? _currentLevel;
+  bool _isUpdatingLevel = false;
 
   @override
   void initState() {
@@ -29,6 +31,7 @@ class _PatientProgressScreenState extends State<PatientProgressScreen> {
       if (mounted) {
         setState(() {
           _progress = progress;
+          _currentLevel = progress.assignedLevel;
           _isLoading = false;
         });
       }
@@ -38,6 +41,38 @@ class _PatientProgressScreenState extends State<PatientProgressScreen> {
           _errorMessage = e.toString();
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _updateLevel(int newLevel) async {
+    if (_isUpdatingLevel || _currentLevel == newLevel) return;
+    setState(() => _isUpdatingLevel = true);
+    try {
+      await ApiService().assignPatientLevel(widget.patientId, newLevel);
+      if (mounted) {
+        setState(() {
+          _currentLevel = newLevel;
+          _isUpdatingLevel = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Prescribed Level $newLevel to patient'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUpdatingLevel = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update level: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }
@@ -58,6 +93,13 @@ class _PatientProgressScreenState extends State<PatientProgressScreen> {
                   : ListView(
                       padding: const EdgeInsets.all(20),
                       children: [
+                        _LevelAssignmentCard(
+                          currentLevel: _currentLevel ?? _progress!.assignedLevel,
+                          gameStatus: _progress!.gameStatus,
+                          isUpdating: _isUpdatingLevel,
+                          onLevelSelected: _updateLevel,
+                        ),
+                        const SizedBox(height: 16),
                         _TrendCard(
                           title: 'Confidence Trend',
                           icon: Icons.trending_up_rounded,
@@ -284,3 +326,147 @@ class _MiniTile extends StatelessWidget {
     );
   }
 }
+
+class _LevelAssignmentCard extends StatelessWidget {
+  const _LevelAssignmentCard({
+    required this.currentLevel,
+    required this.gameStatus,
+    required this.isUpdating,
+    required this.onLevelSelected,
+  });
+
+  final int currentLevel;
+  final String gameStatus;
+  final bool isUpdating;
+  final ValueChanged<int> onLevelSelected;
+
+  static const _levelDescriptions = {
+    1: 'Mild Range of Motion',
+    2: 'Arm Elevation & Reach',
+    3: 'Target Coordination',
+    4: 'Speed & Resistance',
+    5: 'Full Upper-Limb Extension',
+  };
+
+  Color _statusColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'PLAYING':
+        return const Color(0xFF10B981); // green
+      case 'START_TRIGGERED':
+        return const Color(0xFFF59E0B); // amber
+      case 'COMPLETED':
+        return const Color(0xFF3B82F6); // blue
+      default:
+        return const Color(0xFF9CA3AF); // gray
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _BaseCard(
+      title: 'VR Rehab Prescription',
+      icon: Icons.videogame_asset_rounded,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Text('Active:', style: TextStyle(color: Color(0xFFB7C8D9), fontSize: 13)),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2F80FF).withAlpha(51),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF2F80FF)),
+                    ),
+                    child: Text(
+                      'Level $currentLevel',
+                      style: const TextStyle(
+                        color: Color(0xFF2F80FF),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _statusColor(gameStatus),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    gameStatus,
+                    style: TextStyle(
+                      color: _statusColor(gameStatus),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _levelDescriptions[currentLevel] ?? 'Custom Exercise Level',
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFFE2E8F0),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Select Level to Prescribe:',
+            style: TextStyle(color: Color(0xFF96A9C2), fontSize: 12, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [1, 2, 3, 4, 5].map((lvl) {
+              final isSelected = lvl == currentLevel;
+              return ChoiceChip(
+                label: Text('Level $lvl'),
+                selected: isSelected,
+                selectedColor: const Color(0xFF2F80FF),
+                backgroundColor: const Color(0xFF131D2D),
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                ),
+                onSelected: isUpdating ? null : (_) => onLevelSelected(lvl),
+              );
+            }).toList(),
+          ),
+          if (isUpdating) ...[
+            const SizedBox(height: 12),
+            const Row(
+              children: [
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 8),
+                Text('Updating prescription...', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+

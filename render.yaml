@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: rehabtrack-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: DOCTOR_SIGNUP_CODE
+        sync: false
+

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 from deps import require_role
-from schemas import DoctorUpdateRequest
+from schemas import AssignLevelRequest, DoctorUpdateRequest
 
 router = APIRouter(prefix="/doctors", tags=["doctors"])
 
@@ -148,7 +148,7 @@ def get_patient_detail(
     patient = db.execute(
         text(
             """
-            SELECT id, patient_code, name, date_of_birth, gender, phone
+            SELECT id, patient_code, name, date_of_birth, gender, phone, assigned_level, game_status
             FROM patients
             WHERE id = :patient_id
             """
@@ -170,10 +170,20 @@ def get_patient_progress_for_doctor(
 ) -> dict:
     doctor = _doctor_row_for_user(db, int(current_user["id"]))
 
+    patient = db.execute(
+        text("SELECT id, name, assigned_level, game_status FROM patients WHERE id = :patient_id"),
+        {"patient_id": patient_id},
+    ).mappings().first()
+
+    assigned_level = int(patient["assigned_level"]) if patient and patient["assigned_level"] is not None else 1
+    game_status = str(patient["game_status"]) if patient and patient["game_status"] else "IDLE"
+
     rows = _patient_session_rows(db, patient_id)
     if not rows:
         return {
             "patient_id": patient_id,
+            "assigned_level": assigned_level,
+            "game_status": game_status,
             "total_sessions": 0,
             "improving_patients": 0,
             "average_confidence": 0.0,
@@ -204,6 +214,8 @@ def get_patient_progress_for_doctor(
 
     return {
         "patient_id": patient_id,
+        "assigned_level": assigned_level,
+        "game_status": game_status,
         "total_sessions": len(rows),
         "improving_patients": sum(1 for row in rows if (row["movement_status"] or "").lower() == "improving"),
         "average_confidence": round(sum(confidence_scores) / len(confidence_scores), 4) if confidence_scores else 0.0,
@@ -222,4 +234,35 @@ def get_patient_progress_for_doctor(
             }
             for row in rows
         ],
+    }
+
+
+@router.post("/me/patients/{patient_id}/assign-level")
+def assign_patient_level(
+    patient_id: int,
+    payload: AssignLevelRequest,
+    current_user: dict = Depends(require_role("DOCTOR")),
+    db: Session = Depends(get_db),
+) -> dict:
+    doctor = _doctor_row_for_user(db, int(current_user["id"]))
+
+    patient = db.execute(
+        text("SELECT id, name FROM patients WHERE id = :patient_id"),
+        {"patient_id": patient_id},
+    ).mappings().first()
+
+    if not patient:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found.")
+
+    db.execute(
+        text("UPDATE patients SET assigned_level = :level, updated_at = NOW() WHERE id = :patient_id"),
+        {"level": payload.level, "patient_id": patient_id},
+    )
+    db.commit()
+
+    return {
+        "status": "success",
+        "patient_id": patient_id,
+        "assigned_level": payload.level,
+        "message": f"Successfully assigned Level {payload.level} to {patient['name']}",
     }

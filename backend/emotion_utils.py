@@ -9,7 +9,13 @@ import torch
 from model_loader import get_emotion_model
 
 EMOTION_LABELS = ["Angry", "Happy", "Neutral", "Sad"]
-FACE_CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+
+FACE_CASCADE = None
+if hasattr(cv2, "CascadeClassifier") and hasattr(cv2, "data") and hasattr(cv2.data, "haarcascades"):
+    try:
+        FACE_CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    except Exception:
+        FACE_CASCADE = None
 
 
 def _to_numpy(input_data: Any) -> np.ndarray:
@@ -40,7 +46,7 @@ def _prepare_face_tensor(input_data: Any) -> torch.Tensor | None:
     else:
         return None
 
-    if FACE_CASCADE.empty():
+    if FACE_CASCADE is None or (hasattr(FACE_CASCADE, "empty") and FACE_CASCADE.empty()):
         face_region = gray_frame
     else:
         faces = FACE_CASCADE.detectMultiScale(gray_frame, scaleFactor=1.1, minNeighbors=5, minSize=(24, 24))

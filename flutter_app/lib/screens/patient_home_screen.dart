@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/patient.dart';
 import '../models/progress.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
@@ -21,6 +22,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   static const Color _primary = Color(0xFF2F80FF);
 
   UserModel? _user;
+  Patient? _patient;
   ProgressSummary? _progress;
   bool _isLoading = true;
   String? _errorMessage;
@@ -38,10 +40,16 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
       if (user == null) {
         throw Exception('Not logged in');
       }
+      Patient? patient;
+      try {
+        patient = await api.getPatientMe();
+      } catch (_) {}
+
       final progress = await api.getPatientProgress();
       if (mounted) {
         setState(() {
           _user = user;
+          _patient = patient;
           _progress = progress;
           _isLoading = false;
         });
@@ -100,18 +108,28 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
                 name: _user!.name,
                 progressLabel: '${_progress!.totalSessions} sessions logged',
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
+              _PrescribedLevelBanner(
+                assignedLevel: _patient?.assignedLevel ?? 1,
+                patientCode: _patient?.patientCode ?? '',
+              ),
+              const SizedBox(height: 14),
               Row(
                 children: [
                   Expanded(
                     child: _FeatureCard(
-                      title: 'Start Exercise',
-                      subtitle: 'Record or upload a video',
-                      icon: Icons.videocam_rounded,
+                      title: 'Start VR Session',
+                      subtitle: 'Record & trigger VR level ${_patient?.assignedLevel ?? 1}',
+                      icon: Icons.videogame_asset_rounded,
                       accent: _primary,
                       onTap: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute<void>(builder: (_) => const ExerciseFlowScreen()),
+                          MaterialPageRoute<void>(
+                            builder: (_) => ExerciseFlowScreen(
+                              assignedLevel: _patient?.assignedLevel ?? 1,
+                              patientCode: _patient?.patientCode,
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -457,3 +475,87 @@ class _MiniStat extends StatelessWidget {
     );
   }
 }
+
+class _PrescribedLevelBanner extends StatelessWidget {
+  const _PrescribedLevelBanner({
+    required this.assignedLevel,
+    required this.patientCode,
+  });
+
+  final int assignedLevel;
+  final String patientCode;
+
+  static const _descriptions = {
+    1: 'Mild Range of Motion & Reaching',
+    2: 'Arm Elevation by Shoulder & Flexion',
+    3: 'Target Coordination & Reach Distance',
+    4: 'Resistance & Dynamic Balance',
+    5: 'Full Upper-Limb Free Range',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF132238), Color(0xFF182D4B)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF243B5E)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2F80FF).withAlpha(51),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.medical_services_rounded, color: Color(0xFF2F80FF), size: 26),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'PRESCRIBED: LEVEL $assignedLevel',
+                      style: const TextStyle(
+                        color: Color(0xFF61E4C5),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    if (patientCode.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        '($patientCode)',
+                        style: const TextStyle(color: Color(0xFF7E92AB), fontSize: 11),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _descriptions[assignedLevel] ?? 'Rehabilitation Exercise',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

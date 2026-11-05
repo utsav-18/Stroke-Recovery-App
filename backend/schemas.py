@@ -59,3 +59,19 @@ class AnalyzeResponse(BaseModel):
     movement_status: str
     confidence_score: float
     emotion: str
+
+
+class AssignLevelRequest(BaseModel):
+    level: int = Field(default=1, ge=1, le=10)
+
+
+class GameStatusUpdateRequest(BaseModel):
+    status: str = Field(min_length=1, max_length=50)
+
+
+class GameTriggerResponse(BaseModel):
+    patient_id: int
+    patient_code: str
+    assigned_level: int
+    game_status: str
+

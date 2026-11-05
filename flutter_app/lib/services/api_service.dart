@@ -108,6 +108,27 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> triggerGameStart({String status = 'START_TRIGGERED'}) async {
+    try {
+      final response = await _dio.post(
+        '/patients/me/game-trigger',
+        data: {'status': status},
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getGameTriggerStatus() async {
+    try {
+      final response = await _dio.get('/patients/me/game-trigger');
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   Future<Patient> updatePatientMe({
     required String name,
     String? dateOfBirth,

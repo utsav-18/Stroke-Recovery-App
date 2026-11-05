@@ -148,6 +148,18 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> assignPatientLevel(int patientId, int level) async {
+    try {
+      final response = await _dio.post(
+        '/doctors/me/patients/$patientId/assign-level',
+        data: {'level': level},
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   Exception _handleError(DioException error) {
     final response = error.response;
     if (response != null) {

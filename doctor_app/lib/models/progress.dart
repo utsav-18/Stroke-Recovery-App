@@ -1,6 +1,8 @@
 class ProgressSummary {
   const ProgressSummary({
     required this.patientId,
+    this.assignedLevel = 1,
+    this.gameStatus = 'IDLE',
     required this.totalSessions,
     required this.averageConfidence,
     required this.latestMovementStatus,
@@ -10,6 +12,8 @@ class ProgressSummary {
   });
 
   final int patientId;
+  final int assignedLevel;
+  final String gameStatus;
   final int totalSessions;
   final double averageConfidence;
   final String latestMovementStatus;
@@ -32,6 +36,8 @@ class ProgressSummary {
 
     return ProgressSummary(
       patientId: json['patient_id'] as int? ?? 0,
+      assignedLevel: json['assigned_level'] as int? ?? 1,
+      gameStatus: json['game_status'] as String? ?? 'IDLE',
       totalSessions: json['total_sessions'] as int? ?? 0,
       averageConfidence: (json['average_confidence'] as num?)?.toDouble() ?? 0.0,
       latestMovementStatus: json['latest_movement_status'] as String? ?? 'Not Improved',

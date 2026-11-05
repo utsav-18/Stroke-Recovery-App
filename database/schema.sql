@@ -21,6 +21,8 @@ CREATE TABLE patients (
     date_of_birth DATE,
     gender VARCHAR(20),
     phone VARCHAR(50),
+    assigned_level INT NOT NULL DEFAULT 1,
+    game_status VARCHAR(50) NOT NULL DEFAULT 'IDLE',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

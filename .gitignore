@@ -55,5 +55,10 @@ Thumbs.db
 # =========================
 *.log
 
-# Test media
+# Test media & outputs
 dummy.mp4
+*.mp4
+*.avi
+*.mov
+annotated_videos/
+backend/annotated_videos/

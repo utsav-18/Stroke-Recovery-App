@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from db import get_db
 from deps import require_role
-from schemas import PatientUpdateRequest, SessionCreateRequest
+from schemas import GameStatusUpdateRequest, PatientUpdateRequest, SessionCreateRequest
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -13,7 +13,7 @@ def _patient_row_for_user(db: Session, user_id: int) -> dict:
     row = db.execute(
         text(
             """
-            SELECT id, user_id, patient_code, name, date_of_birth, gender, phone, created_at, updated_at
+            SELECT id, user_id, patient_code, name, date_of_birth, gender, phone, assigned_level, game_status, created_at, updated_at
             FROM patients
             WHERE user_id = :user_id
             """
@@ -71,9 +71,10 @@ def update_patient_me(
             SET name = :name,
                 date_of_birth = :date_of_birth,
                 gender = :gender,
-                phone = :phone
+                phone = :phone,
+                updated_at = NOW()
             WHERE id = :id
-            RETURNING id, user_id, patient_code, name, date_of_birth, gender, phone, created_at, updated_at
+            RETURNING id, user_id, patient_code, name, date_of_birth, gender, phone, assigned_level, game_status, created_at, updated_at
             """
         ),
         {
@@ -197,3 +198,87 @@ def get_patient_progress(current_user: dict = Depends(require_role("PATIENT")), 
         "movement_history": list(reversed(movement_history)),
         "emotion_history": list(reversed(emotion_history)),
     }
+
+
+@router.post("/me/game-trigger")
+def set_patient_game_trigger(
+    payload: GameStatusUpdateRequest | None = None,
+    current_user: dict = Depends(require_role("PATIENT")),
+    db: Session = Depends(get_db),
+) -> dict:
+    patient = _patient_row_for_user(db, int(current_user["id"]))
+    new_status = payload.status if payload else "START_TRIGGERED"
+
+    db.execute(
+        text("UPDATE patients SET game_status = :status, updated_at = NOW() WHERE id = :id"),
+        {"status": new_status, "id": patient["id"]},
+    )
+    db.commit()
+
+    return {
+        "status": "success",
+        "patient_id": patient["id"],
+        "patient_code": patient["patient_code"],
+        "assigned_level": patient["assigned_level"] or 1,
+        "game_status": new_status,
+    }
+
+
+@router.get("/me/game-trigger")
+def get_patient_game_trigger(
+    current_user: dict = Depends(require_role("PATIENT")),
+    db: Session = Depends(get_db),
+) -> dict:
+    patient = _patient_row_for_user(db, int(current_user["id"]))
+    return {
+        "patient_id": patient["id"],
+        "patient_code": patient["patient_code"],
+        "assigned_level": patient["assigned_level"] or 1,
+        "game_status": patient["game_status"] or "IDLE",
+    }
+
+
+@router.get("/game-trigger/{patient_code}")
+def query_game_trigger_by_code(patient_code: str, db: Session = Depends(get_db)) -> dict:
+    """Polled by Unity VR game running on the laptop."""
+    row = db.execute(
+        text("SELECT id, patient_code, name, assigned_level, game_status FROM patients WHERE patient_code = :code"),
+        {"code": patient_code},
+    ).mappings().first()
+
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found.")
+
+    return {
+        "patient_id": row["id"],
+        "patient_code": row["patient_code"],
+        "patient_name": row["name"],
+        "assigned_level": row["assigned_level"] or 1,
+        "game_status": row["game_status"] or "IDLE",
+    }
+
+
+@router.post("/game-trigger/{patient_code}/ack")
+def acknowledge_game_start(patient_code: str, db: Session = Depends(get_db)) -> dict:
+    """Unity calls this when it starts playing the level."""
+    row = db.execute(
+        text("SELECT id, assigned_level FROM patients WHERE patient_code = :code"),
+        {"code": patient_code},
+    ).mappings().first()
+
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found.")
+
+    db.execute(
+        text("UPDATE patients SET game_status = 'PLAYING', updated_at = NOW() WHERE id = :id"),
+        {"id": row["id"]},
+    )
+    db.commit()
+
+    return {
+        "status": "acknowledged",
+        "patient_code": patient_code,
+        "game_status": "PLAYING",
+        "assigned_level": row["assigned_level"] or 1,
+    }
+
