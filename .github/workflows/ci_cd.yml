@@ -39,7 +39,14 @@ jobs:
           DOCTOR_SIGNUP_CODE: ${{ secrets.DOCTOR_SIGNUP_CODE || 'ZIOCD0M84fiZ' }}
         run: |
           python -m uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir backend &
-          sleep 5
+          for i in {1..30}; do
+            if curl -s http://127.0.0.1:8000/docs > /dev/null; then
+              echo "Backend is ready!"
+              break
+            fi
+            echo "Waiting for backend to start ($i/30)..."
+            sleep 1
+          done
           python test_final.py
 
   build-apks:
