@@ -12,8 +12,8 @@ using UnityEngine.SceneManagement;
 public class RehabVRGameBridge : MonoBehaviour
 {
     [Header("Backend Connection")]
-    [Tooltip("IP address or URL of your RehabTrack FastAPI backend (e.g. http://192.168.1.50:8000 or http://127.0.0.1:8000)")]
-    public string backendBaseUrl = "http://127.0.0.1:8000";
+    [Tooltip("URL of your deployed RehabTrack FastAPI backend or local IP (e.g. https://stroke-recovery-app.onrender.com or http://192.168.1.3:8000)")]
+    public string backendBaseUrl = "https://stroke-recovery-app.onrender.com";
 
     [Tooltip("The unique patient code assigned to this patient (e.g. PT-2001)")]
     public string patientCode = "PT-2001";

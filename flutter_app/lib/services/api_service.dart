@@ -43,6 +43,41 @@ class ApiService {
   final _storage = const FlutterSecureStorage();
   static const _tokenKey = 'auth_token';
 
+  void setBaseUrl(String newUrl) {
+    var formatted = newUrl.trim();
+    if (!formatted.startsWith('http://') && !formatted.startsWith('https://')) {
+      formatted = 'http://$formatted';
+    }
+    while (formatted.endsWith('/')) {
+      formatted = formatted.substring(0, formatted.length - 1);
+    }
+    _dio.options.baseUrl = formatted;
+    AppConfig.setBaseUrl(formatted);
+  }
+
+  String get currentBaseUrl => _dio.options.baseUrl;
+
+  Future<bool> testConnection(String testUrl) async {
+    try {
+      var formatted = testUrl.trim();
+      if (!formatted.startsWith('http://') && !formatted.startsWith('https://')) {
+        formatted = 'http://$formatted';
+      }
+      while (formatted.endsWith('/')) {
+        formatted = formatted.substring(0, formatted.length - 1);
+      }
+      final testDio = Dio(BaseOptions(
+        baseUrl: formatted,
+        connectTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 5),
+      ));
+      final res = await testDio.get('/docs');
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // --- Auth ---
 
   Future<UserModel> login({required String email, required String password}) async {
@@ -289,6 +324,14 @@ class ApiService {
         message = responseBody?.toString() ?? message;
       }
       return Exception(message);
+    }
+    if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.unknown) {
+      return Exception(
+        'Cannot reach server at ${_dio.options.baseUrl}.\n'
+        'Tap the ⚙️ Settings icon to check or update the server URL.',
+      );
     }
     return Exception('Failed to connect: ${error.message ?? 'request failed'}');
   }
